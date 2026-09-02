@@ -1,16 +1,5 @@
 import Foundation
 
-enum AppSection: Int, CaseIterable, Identifiable {
-    case home
-    case new
-    case sources
-    case installed
-    case files
-    case search
-
-    var id: Int { rawValue }
-}
-
 enum WallpaperFeatureSupportPolicy {
     static func isSupported(major: Int) -> Bool {
         switch major {
@@ -29,30 +18,6 @@ struct OneShotPresentationGate: Equatable {
         guard !hasClaimed else { return false }
         hasClaimed = true
         return true
-    }
-}
-
-struct FeatureVisibility: Equatable {
-    static let cleanerStorageKey = "feature.cleaner.enabled"
-    static let developerModeStorageKey = "feature.developer_mode.enabled"
-
-    let developerModeEnabled: Bool
-
-    init(developerModeEnabled: Bool) {
-        self.developerModeEnabled = developerModeEnabled
-    }
-
-    var visibleSections: [AppSection] {
-        AppSection.allCases.filter(isVisible)
-    }
-
-    func isVisible(_ section: AppSection) -> Bool {
-        switch section {
-        case .files:
-            return developerModeEnabled
-        default:
-            return true
-        }
     }
 }
 
