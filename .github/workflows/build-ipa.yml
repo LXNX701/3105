@@ -24,15 +24,36 @@ jobs:
           find . -name "*.xcodeproj" -type d
           echo "=== Workspaces encontrados ==="
           find . -name "*.xcworkspace" -type d
-          echo "=== Esquemas disponibles ==="
-          xcodebuild -list -project ThreeOneOSFive.xcodeproj
+          echo "=== Esquemas disponibles (Project) ==="
+          xcodebuild -list -project ThreeOneOSFive.xcodeproj || echo "No project found"
+          echo "=== Esquemas disponibles (Workspace) ==="
+          if [ -f "ThreeOneOSFive.xcworkspace" ]; then
+            xcodebuild -list -workspace ThreeOneOSFive.xcworkspace || echo "No workspace found"
+          fi
+
+      - name: Extraer nombre del esquema
+        id: scheme
+        run: |
+          if [ -f "ThreeOneOSFive.xcworkspace" ]; then
+            SCHEME=$(xcodebuild -list -workspace ThreeOneOSFive.xcworkspace | grep "Schemes:" -A 10 | tail -1 | sed 's/^[[:space:]]*//g')
+          else
+            SCHEME=$(xcodebuild -list -project ThreeOneOSFive.xcodeproj | grep "Schemes:" -A 10 | tail -1 | sed 's/^[[:space:]]*//g')
+          fi
+          echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
+          echo "Detected scheme: $SCHEME"
 
       - name: Compilar proyecto (usando workspace si existe)
         run: |
+          SCHEME="${{ steps.scheme.outputs.scheme }}"
+          if [ -z "$SCHEME" ]; then
+            echo "Error: Could not detect scheme name"
+            exit 1
+          fi
+          
           if [ -f "ThreeOneOSFive.xcworkspace" ]; then
-            echo "Usando workspace..."
+            echo "Usando workspace con esquema: $SCHEME"
             xcodebuild -workspace ThreeOneOSFive.xcworkspace \
-              -scheme ThreeOneOSFive \
+              -scheme "$SCHEME" \
               -configuration Release \
               -derivedDataPath build \
               -destination 'generic/platform=iOS' \
@@ -43,9 +64,9 @@ jobs:
               OTHER_SWIFT_FLAGS="-O -whole-module-optimization" \
               build
           else
-            echo "Usando proyecto..."
+            echo "Usando proyecto con esquema: $SCHEME"
             xcodebuild -project ThreeOneOSFive.xcodeproj \
-              -scheme ThreeOneOSFive \
+              -scheme "$SCHEME" \
               -configuration Release \
               -derivedDataPath build \
               -destination 'generic/platform=iOS' \
