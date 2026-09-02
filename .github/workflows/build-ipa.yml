@@ -1,0 +1,48 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Xcode
+        run: |
+          sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Compilar proyecto
+        run: |
+          xcodebuild -project ThreeOneOSFive.xcodeproj \
+            -scheme ThreeOneOSFive \
+            -configuration Release \
+            -derivedDataPath build \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            GCC_OPTIMIZATION_LEVEL=s \
+            OTHER_SWIFT_FLAGS="-O -whole-module-optimization" \
+            build
+
+      - name: Crear carpeta Payload
+        run: |
+          mkdir -p Payload
+          cp -r build/Build/Products/Release-iphoneos/ThreeOneOSFive.app Payload/
+
+      - name: Empaquetar IPA
+        run: |
+          zip -r MOONZAZA-X-CHEAT.ipa Payload
+
+      - name: Subir IPA como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: MOONZAZA-X-CHEAT
+          path: MOONZAZA-X-CHEAT.ipa
