@@ -24,71 +24,45 @@ jobs:
           find . -name "*.xcodeproj" -type d
           echo "=== Workspaces encontrados ==="
           find . -name "*.xcworkspace" -type d
-          echo "=== Esquemas disponibles (Project) ==="
-          xcodebuild -list -project ThreeOneOSFive.xcodeproj || echo "No project found"
-          echo "=== Esquemas disponibles (Workspace) ==="
-          if [ -f "ThreeOneOSFive.xcworkspace" ]; then
-            xcodebuild -list -workspace ThreeOneOSFive.xcworkspace || echo "No workspace found"
-          fi
-
-      - name: Extraer nombre del esquema
-        id: scheme
-        run: |
-          if [ -f "ThreeOneOSFive.xcworkspace" ]; then
-            SCHEME=$(xcodebuild -list -workspace ThreeOneOSFive.xcworkspace | grep "Schemes:" -A 10 | tail -1 | sed 's/^[[:space:]]*//g')
-          else
-            SCHEME=$(xcodebuild -list -project ThreeOneOSFive.xcodeproj | grep "Schemes:" -A 10 | tail -1 | sed 's/^[[:space:]]*//g')
-          fi
-          echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
-          echo "Detected scheme: $SCHEME"
+          echo "=== Esquemas disponibles ==="
+          xcodebuild -list -project ThreeOneOSFive.xcodeproj || true
 
       - name: Compilar proyecto (usando workspace si existe)
         run: |
-          SCHEME="${{ steps.scheme.outputs.scheme }}"
-          if [ -z "$SCHEME" ]; then
-            echo "Error: Could not detect scheme name"
-            exit 1
-          fi
-          
-          if [ -f "ThreeOneOSFive.xcworkspace" ]; then
-            echo "Usando workspace con esquema: $SCHEME"
+          if [ -d "ThreeOneOSFive.xcworkspace" ]; then
+            echo "Usando workspace..."
             xcodebuild -workspace ThreeOneOSFive.xcworkspace \
-              -scheme "$SCHEME" \
+              -scheme ThreeOneOSFive \
               -configuration Release \
               -derivedDataPath build \
               -destination 'generic/platform=iOS' \
               CODE_SIGN_IDENTITY="" \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGNING_ALLOWED=NO \
-              GCC_OPTIMIZATION_LEVEL=s \
-              OTHER_SWIFT_FLAGS="-O -whole-module-optimization" \
               build
           else
-            echo "Usando proyecto con esquema: $SCHEME"
+            echo "Usando proyecto..."
             xcodebuild -project ThreeOneOSFive.xcodeproj \
-              -scheme "$SCHEME" \
+              -scheme ThreeOneOSFive \
               -configuration Release \
               -derivedDataPath build \
               -destination 'generic/platform=iOS' \
               CODE_SIGN_IDENTITY="" \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGNING_ALLOWED=NO \
-              GCC_OPTIMIZATION_LEVEL=s \
-              OTHER_SWIFT_FLAGS="-O -whole-module-optimization" \
               build
           fi
 
       - name: Crear carpeta Payload
         run: |
           mkdir -p Payload
-          # Buscar el .app generado (puede estar en diferentes ubicaciones)
-          if [ -d "build/Build/Products/Release-iphoneos/ThreeOneOSFive.app" ]; then
-            cp -r build/Build/Products/Release-iphoneos/ThreeOneOSFive.app Payload/
-          elif [ -d "build/Release-iphoneos/ThreeOneOSFive.app" ]; then
-            cp -r build/Release-iphoneos/ThreeOneOSFive.app Payload/
+          APP_PATH=$(find build -name "ThreeOneOSFive.app" -type d | head -n 1)
+          if [ -n "$APP_PATH" ]; then
+            echo "Archivo .app encontrado en: $APP_PATH"
+            cp -r "$APP_PATH" Payload/
           else
-            echo "No se encontró el .app, buscando..."
-            find build -name "*.app" -type d
+            echo "No se encontró el .app en las rutas estándar, listando contenido de build:"
+            find build -maxdepth 4
             exit 1
           fi
 
