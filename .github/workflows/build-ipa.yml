@@ -18,24 +18,58 @@ jobs:
           sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
           xcodebuild -version
 
-      - name: Compilar proyecto
+      - name: Listar proyectos y esquemas (debug)
         run: |
-          xcodebuild -project ThreeOneOSFive.xcodeproj \
-            -scheme ThreeOneOSFive \
-            -configuration Release \
-            -derivedDataPath build \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            GCC_OPTIMIZATION_LEVEL=s \
-            OTHER_SWIFT_FLAGS="-O -whole-module-optimization" \
-            build
+          echo "=== Proyectos encontrados ==="
+          find . -name "*.xcodeproj" -type d
+          echo "=== Workspaces encontrados ==="
+          find . -name "*.xcworkspace" -type d
+          echo "=== Esquemas disponibles ==="
+          xcodebuild -list -project ThreeOneOSFive.xcodeproj
+
+      - name: Compilar proyecto (usando workspace si existe)
+        run: |
+          if [ -f "ThreeOneOSFive.xcworkspace" ]; then
+            echo "Usando workspace..."
+            xcodebuild -workspace ThreeOneOSFive.xcworkspace \
+              -scheme ThreeOneOSFive \
+              -configuration Release \
+              -derivedDataPath build \
+              -destination 'generic/platform=iOS' \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              GCC_OPTIMIZATION_LEVEL=s \
+              OTHER_SWIFT_FLAGS="-O -whole-module-optimization" \
+              build
+          else
+            echo "Usando proyecto..."
+            xcodebuild -project ThreeOneOSFive.xcodeproj \
+              -scheme ThreeOneOSFive \
+              -configuration Release \
+              -derivedDataPath build \
+              -destination 'generic/platform=iOS' \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              GCC_OPTIMIZATION_LEVEL=s \
+              OTHER_SWIFT_FLAGS="-O -whole-module-optimization" \
+              build
+          fi
 
       - name: Crear carpeta Payload
         run: |
           mkdir -p Payload
-          cp -r build/Build/Products/Release-iphoneos/ThreeOneOSFive.app Payload/
+          # Buscar el .app generado (puede estar en diferentes ubicaciones)
+          if [ -d "build/Build/Products/Release-iphoneos/ThreeOneOSFive.app" ]; then
+            cp -r build/Build/Products/Release-iphoneos/ThreeOneOSFive.app Payload/
+          elif [ -d "build/Release-iphoneos/ThreeOneOSFive.app" ]; then
+            cp -r build/Release-iphoneos/ThreeOneOSFive.app Payload/
+          else
+            echo "No se encontró el .app, buscando..."
+            find build -name "*.app" -type d
+            exit 1
+          fi
 
       - name: Empaquetar IPA
         run: |
