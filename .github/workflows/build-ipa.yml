@@ -18,7 +18,14 @@ jobs:
           sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
           xcodebuild -version
 
-      - name: Compilar proyecto
+      - name: Verificar esquemas disponibles
+        run: |
+          echo "=== Proyectos encontrados ==="
+          find . -name "*.xcodeproj" -type d
+          echo "=== Esquemas disponibles ==="
+          xcodebuild -list -project ThreeOneOSFive.xcodeproj
+
+      - name: Compilar proyecto (usando esquema 3105)
         run: |
           xcodebuild -project ThreeOneOSFive.xcodeproj \
             -scheme 3105 \
@@ -28,20 +35,14 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
+            GCC_OPTIMIZATION_LEVEL=s \
+            OTHER_SWIFT_FLAGS="-O -whole-module-optimization" \
             build
 
       - name: Crear carpeta Payload
         run: |
           mkdir -p Payload
-          APP_PATH=$(find build -name "3105.app" -type d | head -n 1)
-          if [ -n "$APP_PATH" ]; then
-            echo "Archivo .app encontrado en: $APP_PATH"
-            cp -r "$APP_PATH" Payload/
-          else
-            echo "No se encontró el .app, listando contenido de build:"
-            find build -maxdepth 4
-            exit 1
-          fi
+          cp -r build/Build/Products/Release-iphoneos/3105.app Payload/
 
       - name: Empaquetar IPA
         run: |
